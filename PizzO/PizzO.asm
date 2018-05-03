@@ -218,10 +218,10 @@ DisplayLogin:                   ;Displays a Menu for Login
   CALL CleanPerif               ;Cleans all Perif
   MOV R3, OK
   LoginCycle:
-    MOV R5, BDDATACHECK         ;Memory for a data comparation
+
     CALL GetUser
     CALL GetPass
-    MOVB R0, [R3]               ;Places in R0 the value of the memory for the input of OK
+    MOVB R0, [R3]               ;Places in R0 the value of the input OK
     MOV R7, 30H
     SUB R0, R7                  ;Converts the input from a string number to an integer number
     CMP R0, 1
@@ -246,7 +246,8 @@ GetUser:                      ;Loops untill has cheked all user inputs
   MOV R4, USERE               ;Gets where the user input ends
   MOV R2, USERSCREEN          ;Gets where in the screen is the user space
   ADD R4, 1                   ;Adds 1 to the password end position to make comparation easyer
-  MOV R7, 5FH                  ;This is the ASCII code for "_"
+  MOV R7, 5FH                 ;This is the ASCII code for "_"
+    MOV R5, BDDATACHECK       ;Memory for a data comparation
   GetUserLoop:
   MOVB R1, [R0]
   CMP R1, R7
@@ -274,12 +275,16 @@ GetPass:                    ;Loops untill has checked all password inputs
   PUSH R5
   PUSH R7
   PUSH R8
+  MOV R5, BDDATACHECK         ;Memory for a data comparation
+  MOV R0, 8
+  ADD R5, R0
   MOV R0, PASSB               ;Gets where the password input starts
   MOV R4, PASSE               ;Gets where the password input ends
   ADD R4, 1                   ;Adds 1 to the password end position to make comparation easyer
   MOV R2, PASSSCREEN          ;Gets where in the screen the password should be
   MOV R8, 2AH                 ;Saves the '*' to be placed as password in the screen
   MOV R7, 5FH                  ;This is the ASCII code for "_"
+
   GetPassLoop:
   MOVB R1, [R0]
   CMP R1, R7
@@ -334,7 +339,7 @@ NEXTUSER:
   MOV R1, R4              ;Gets the new Data to compare
   JMP TRYLOGIN            ;Jums to try login with the new Data
 LOGGED:
-  MOV R9, R4               ;Places the memory position from the mached user so we can use it later on the program
+  MOV R9, R4              ;Places the memory position from the mached user so we can use it later on the program
 ENDLOGIN:
 POP R6
 POP R5
@@ -345,24 +350,93 @@ POP R1
 POP R0
 RET
 
-DisplayRegistration:            ;Behaviour of the Menu Registration
+DisplayRegistration:        ;Behaviour of the Menu Registration
 PUSH R0
 PUSH R2
 PUSH R3
 MOV R3, BDDATACHECK         ;Memory for a data comparation
-MOV R2, RegistrationMenu
+MOV R2, RegistrationMenu    ;Screen to Display
 CALL ShowDisplay
 CALL CleanPerif
 RegistrationCycle:
-MOV R0, OK
-MOV R0,[R0]
-MOV R2, 30H
-SUB R0, R2
-CALL GetUser
-CALL GetPass
-CMP R0,1
-JZ RegistrationCycle
+  CALL GetUser
+  CALL GetPass
+  MOV R0, OK
+  MOVB R0, [R0]
+  MOV R2, 30H
+  SUB R0, R2
+  CMP R0, 1
+  JNZ RegistrationCycle
+Call Register               ;Will attempt to save into the DataBase if theres no user with the same name
 POP R5
 POP R2
 POP R0
 RET
+
+Register:
+  PUSH R0
+  PUSH R1
+  PUSH R2
+  PUSH R3
+  PUSH R4
+  PUSH R5
+  PUSH R6
+  MOV R0, BDDATACHECK   ;Checker
+  MOV R1, BD
+  MOV R2, BD
+  MOV R3, 0             ;Counter
+  MOV R4, 8             ;User length
+  UserCheckLoop:
+    MOVB R5, [R0]          ;First character
+    MOVB R6, [R1]
+    CMP R6, 0
+    JZ Registering        ;The DataBase
+    CMP R5, R6
+    JNZ NextRegisterLoop  ;This user is not here
+    ADD R0, 1             ;increments checker character
+    ADD R1, 1
+    ADD R3, 1
+    CMP R3, R4
+    JZ UserFound          ;User already exists cannot Register
+    JMP UserCheckLoop     ;Keeps looping untill one of the breaks verify
+  NextRegisterLoop:
+    MOV R0, BDDATACHECK
+    MOV R3, 0
+    MOV R6, 20H
+    ADD R2, R6
+    MOV R1, R2
+    JMP UserCheckLoop
+  Registering:
+    MOV R0, BDDATACHECK
+    MOV R3, 0
+    MOV R4, 16
+    RegisteringLoop:
+      MOVB R1, [R0]
+      MOVB [R2], R1
+      ADD R0, 1
+      ADD R2, 1
+      ADD R3, 1
+      CMP R3, R4
+      JZ RegisterEnd
+      JMP RegisteringLoop
+
+  UserFound:
+    MOV R2, ErrorMenu
+    CALL ShowDisplay
+    CALL CleanPerif
+    MOV R3, OK
+    UserFoundLoop:
+      MOV R2, 20H
+      MOV R1, [R3]
+      SUB R1, R2
+      CMP R1, 1
+      JNZ UserFoundLoop
+  RegisterEnd:
+  POP R6
+  POP R5
+  POP R4
+  POP R3
+  POP R2
+  POP R1
+  POP R0
+  RET
