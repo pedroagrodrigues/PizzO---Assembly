@@ -11,12 +11,16 @@ Display                     EQU 20H     ;Memory position to start the Display
 Display_End                 EQU 8FH     ;Memory position to end the Display
 ;----------------	Constantes	----------------------------------------------------
 EmptyCharacter              EQU 20H     ;To place the " " character
+NR_CHARACTERS               EQU 4       ;Número de caracters
+SMALLPIZZA                  EQU 5       ;Price small pizza
+LARGEPIZZA                  EQU 8       ;Price large pizza
+DISCOUNT                    EQU 47H     ;To place the discount ammount on the payment display
+PRICE                       EQU 67H     ;To place the final ordder price
 USERSCREEN                  EQU 43H     ;Saves the position where the inputed user will apear
 PASSSCREEN                  EQU 63H     ;Saves the position place '*' where the password should be
 BDDATACHECK                 EQU 3000H   ;Saves inputed username and password to check its existance in the DataBase
 BD                          EQU 3010H   ;Position of the actual DataBase
 InputUnderScore             EQU 5FH     ;Saves the character "_" to use as a input Checker
-;---StackPointer
 StackPointer                EQU 2FF0H   ;Position for the StackPointer
 ;-----------------------------------------------------------------------------------
 Place 2000H                             ;Layout from all possible screens
@@ -25,7 +29,7 @@ StartMenu:
   String "                "
   String "1 - Login       "
   String "2 - Registration"
-  String "3 - Back        "
+  String "                "
   String "                "
   String "                "
 LoginMenu:
@@ -42,7 +46,7 @@ RegistrationMenu:
   String "                "
   String "   Password:    "
   String "                "
-  String "3 -  Back       "
+  String "3 - Back        "
   String "                "
 ErrorMenu:
   String "                "
@@ -77,20 +81,20 @@ SelectionMenu:
   String "5 - Napolitana  "
 	String "                "
 PaymentMenu:
-  String "   Pagamento    "
+  String "    Payment     "
   String "Discount:       "
-  String "       _.__EUR  "
+  String "        .  EUR  "
   String "Bill:           "
-  String "     ___.__EUR  "
+  String "        .  EUR  "
   String "                "
-  String "3 - Exit        "
+  String "   Press OK     "
 SizeMenu:
-	String "                "
   String "      Size      "
+	String "                "
 	String "1 -  Small      "
   String "2 -  Large      "
+  String "3 -  Back       "
 	String "                "
-	String "3 - Back        "
 	String "                "
 
 ;----------------------Screen Frame --------------------------------------------
@@ -112,8 +116,8 @@ place 0B0H
 
 ;------------- DataBase ----------------------------------------
 place 3010H ;Placing an example user account
-String "1_______1_______"
-String "5000            "
+String "qwerty__qwerty__"
+
 
 ;---------------------------Instructions---------------------------
 place 0000H
@@ -123,6 +127,9 @@ place 0000H
 
 place 6000H
 Beginning:
+  MOV R9, 2DH
+  MOV R10, 3020H
+  MOV [R10], R9
   CALL CleanDisplay
   CALL CleanPerif
   CALL IS_ON
@@ -547,10 +554,10 @@ Register:
       JNZ UserFoundLoop
       JMP RegisterEnd
   RegisterEndSucess:
-    MOV R1, 3030H
-    MOV [R2], R1
-    ADD R2, 2
-    MOV [R2], R1
+    ;MOV R1, 3030H
+    ;MOV [R2], R1
+    ;ADD R2, 2
+    ;MOV [R2], R1
     CALL DisplayPizzOMenu
   RegisterEnd:
   POP R6
@@ -654,9 +661,9 @@ DisplaySizeMenu:
   PUSH R0
   PUSH R1
   PUSH R2
-  MOV R2, SizeMenu
+  MOV R1, 30H
   SizeMenuBegin:
-    MOV R1, 30H
+    MOV R2, SizeMenu
     CALL ShowDisplay
     CALL CleanPerif
     SizeLoop:
@@ -706,21 +713,21 @@ CALL CleanPerif
     MOVB R0, [R0]
     SUB R0, R1
     CMP R0, 1
-    JNZ FinalizationLoop
+    JNZ FinalizationLoop    ;Waits for OK to be Pressed
   MOV R0, NR_SEL
   MOVB R0, [R0]
   SUB R0, R1
-  CMP R0, 1
+  CMP R0, 1                 ;Order More
   JNZ Finalization2
   JMP FinalizationEnd
   Finalization2:
-    CMP R0, 2
+    CMP R0, 2               ;Payment
     JNZ Finalization3
-    ;CALL DisplayPaymentMenu
+    CALL DisplayPaymentMenu
     Finalization3:
       CMP R0, 3
       JNZ Finalization4
-      JMP ON
+      JMP ON                ;Exit
       Finalization4:
         CALL DisplayError
         JMP FinalizationMenuBegin
@@ -729,3 +736,150 @@ POP R2
 POP R1
 POP R0
 RET
+
+
+;--------------------------------PaymentMenu----------------------------------
+
+DisplayPaymentMenu:
+PUSH R0
+PUSH R1
+PUSH R2
+PUSH R3
+MOV R1, 30H
+PaymentMenuBegin:
+  MOV R2, PaymentMenu
+  CALL ShowDisplay
+  CALL CleanPerif
+  CALL PaymentCalculation
+  PaymentLoop:
+    MOV R0, OK
+    MOVB R0, [R0]
+    SUB R0, R1
+    CMP R0, 1
+    JNZ PaymentLoop
+  JMP ON
+POP R3
+POP R2
+POP R1
+POP R0
+RET
+PaymentCalculation:
+PUSH R0
+PUSH R1
+PUSH R2                   ;History Total
+PUSH R3
+PUSH R4                   ;Total
+MOV R3, R9
+MOV R1, 16
+ADD R3, R1                ;Payment historic
+MOV R2, [R3]
+MOV R1, SMALLPIZZA
+MUL R1, R8
+ADD R2, R1
+MOV R4, R1
+MOV R1, LARGEPIZZA
+MUL R1, R10
+ADD R2, R1
+ADD R4, R1
+MOV [R3], R2
+MOV R1, 50
+CMP R2, R1
+JLT NoDiscount
+SUB R2, R1
+MOV [R3], R2
+CMP R8, 0
+JZ LargeDiscount
+SUB R4, 3
+MOV R2, PRICE
+MOV R0, R4
+CALL CONVERTER
+ADD R2, 2
+MOV R3, 35H
+MOVB [R2], R3
+ADD R2, 1
+MOV R3, 30H
+MOVB [R2], R3
+MOV R2, DISCOUNT
+MOV R0, 2
+CALL CONVERTER
+ADD R2, 2
+MOV R3, 35H
+MOVB [R2], R3
+ADD R2,1
+MOV R3, 30H
+MOVB[R2], R3
+JMP CalculationEnd
+LargeDiscount:
+SUB R4, 4
+MOV R2, PRICE
+MOV R0, R4
+CALL CONVERTER
+ADD R2, 2
+MOV R3,30H
+MOVB [R2], R3
+ADD R2, 1
+MOVB [R2], R3
+MOV R2, DISCOUNT
+MOV R0, 4H
+CALL CONVERTER
+ADD R2, 2
+MOVB [R2], R3
+ADD R2, 1
+MOVB [R2], R3
+JMP CalculationEnd
+
+  NoDiscount:
+    MOV R3, 30H
+    MOV R2, PRICE
+    MOV R0, R4
+    CALL CONVERTER
+    ADD R2, 2
+    MOVB [R2], R3
+    ADD R2, 1
+    MOVB [R2], R3
+    MOV R0, 0
+    MOV R2, DISCOUNT
+    CALL CONVERTER
+    ADD R2, 2
+    MOVB[R2], R3
+    ADD R2, 1
+    MOVB [R2], R3
+CalculationEnd:
+POP R4
+POP R3
+POP R2
+POP R1
+POP R0
+RET
+
+
+CONVERTER:  ;ROTINA DE CONVERSÃO NUM->CARACTER
+  PUSH R0
+  PUSH R1
+  PUSH R2
+  PUSH R3
+  PUSH R4
+  PUSH R5
+  MOV R1, R0
+  MOV R0, 10
+  MOV R3, 0                          ;Starts counter at zero
+  NextChar:
+    MOV R4, R1
+    MOD R4, R0                       ;Gets rest of the division by 10
+    DIV R1, R0                       ;Divides by 10
+    MOV R5, 30H
+    ADD R5, R4                       ;Converts to ASCII
+    MOV R4, R2
+    MOVB [R4], R5                    ;Displays the converted number
+    SUB R2, 1                        ;Updates the Display value
+    ADD R3, 1                        ;Counter
+    CMP R3, 2
+    CMP R1, 0                        ;If zero the conversion is over
+    JNZ NextChar                     ;Loops untill all nubers are placed
+  POP R5
+  POP R4
+  POP R3
+  POP R2
+  POP R1
+  POP R0
+  RET
