@@ -33,7 +33,7 @@ StartMenu:
   String "                "
   String "                "
 LoginMenu:
-  String "      Login     "
+  String "    Login       "
   String "   Username:    "
   String "                "
   String "   Password:    "
@@ -41,7 +41,7 @@ LoginMenu:
   String "3 - Back        "
   String "                "
 RegistrationMenu:
-  String "    Registo     "
+  String "  Registration  "
   String "   Username:    "
   String "                "
   String "   Password:    "
@@ -61,7 +61,7 @@ PizzOMenu:
   String "     Online     "
   String "                "
   String "1 - Menu Pizzas "
-  String "                "
+  String "2 - History     "
   String "3 -    Exit     "
   String "                "
 FinalizationMenu:
@@ -72,6 +72,14 @@ FinalizationMenu:
   String "3 -    Exit     "
 	String "                "
 	String "                "
+HistoryMenu:
+  String "    History     "
+  String "                "
+	String "Payments so far:"
+  String "                "
+	String "        .00 EUR "
+	String "                "
+  String "1 -    Back     "
 SelectionMenu:
 	String "     Pizzas     "
   String "1 - PapaManuel  "
@@ -127,6 +135,7 @@ place 0000H
 
 place 6000H
 Beginning:
+  CALL CleanFirstLine
   MOV R9, 2DH
   MOV R10, 3020H
   MOV [R10], R9
@@ -157,6 +166,22 @@ Beginning:
     JZ DisplayRegistrationAUX     ;1 for Registration
     CALL DisplayError
     JMP ON
+CleanFirstLine:
+PUSH R0
+PUSH R1
+PUSH R2
+MOV R0, 0H
+MOV R1, 0
+MOV R2, 16
+CleaningFirstLine:
+  MOV [R1], R0
+  ADD R1, 2
+  CMP R1, R2
+  JNZ CleaningFirstLine
+POP R2
+POP R1
+POP R0
+RET
 ;------------- POWER ON the Display ------------------------------------------
 IS_ON:
   MOV R0, POWER                 ;Move the priferic memory code to R0
@@ -592,17 +617,45 @@ DisplayPizzOMenu:
     JNZ NotPizzO1
     CALL DisplaySelectionMenu   ;Calls the Pizza SelectionMenu
     NotPizzO1:
-    CMP R0, 3
-    JZ PizzOLoopEnd             ;Goes back to the main meny
-    Call DisplayError
-    JMP PizzOBeginning           ;We get here if we did something wrong on this menu and pressed ok on error
+      CMP R0, 2
+      JNZ NotPizza02
+      CALL DisplayHistoryMenu
+        NotPizza02:
+          CMP R0, 3
+          JZ PizzOLoopEnd             ;Goes back to the main meny
+          Call DisplayError
+          JMP PizzOBeginning           ;We get here if we did something wrong on this menu and pressed ok on error
   PizzOLoopEnd:
   POP R2
   POP R1
   POP R0
   RET
-
-  ;-------------------------------SelectionMenu--------------------------------
+  ;-------------------------------DisplayHistoryMenu----------------------------
+  DisplayHistoryMenu:
+    PUSH R0
+    PUSH R1
+    PUSH R2
+    MOV R2, HistoryMenu
+    CALL ShowDisplay
+    CALL CleanPerif
+    MOV R0, R9
+    MOV R1, 16
+    ADD R0, R1
+    MOV R0, [R0]
+    MOV R2, PRICE
+    CALL CONVERTER
+    MOV R1, 30H
+    HistoryLoop:
+      MOV R0, OK
+      MOVB R0, [R0]
+      SUB R0, R1
+      CMP R0, 1
+      JNZ HistoryLoop
+    POP R2
+    POP R1
+    POP R0
+    RET
+  ;-------------------------------SelectionMenu---------------------------------
               ;Selection Menu, allows to choose wich pizza we want
   DisplaySelectionMenu:
   PUSH R0
