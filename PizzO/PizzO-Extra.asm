@@ -79,7 +79,7 @@ HistoryMenu:
   String "                "
 	String "        .00 EUR "
 	String "                "
-  String "1 -    Back     "
+  String "'OK' to go Back "
 SelectionMenu:
 	String "     Pizzas     "
   String "1 - PapaManuel  "
@@ -620,6 +620,7 @@ DisplayPizzOMenu:
       CMP R0, 2
       JNZ NotPizza02
       CALL DisplayHistoryMenu
+      JMP PizzOBeginning
         NotPizza02:
           CMP R0, 3
           JZ PizzOLoopEnd             ;Goes back to the main meny
